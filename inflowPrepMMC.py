@@ -420,7 +420,9 @@ class inflowPrepMMC:
     
     # Driver for conversion from latitude-longitude to UTM coordinates.
     def LatLonToUTM(self,latitude,longitude,UTMzone=None):
+
         
+        # If giving an array of latitude/longitude, loop over each value.
         if isinstance(latitude,np.ndarray):
             
             # Get the dimensions of the coordinates passed into here.
@@ -433,33 +435,48 @@ class inflowPrepMMC:
                 nj = dims[1]
             if (ndims > 2):
                 nk = dims[2]
-                
+
+            # Create empty arrays of UTM x and y coordinates
             UTMx = np.zeros(dims)
             UTMy = np.zeros(dims)
-            
-            if UTMzone is None:
-                UTMzoneArray = np.chararray(dims,itemsize=4)
+
+            # If the UTM zone is not given, create an array of UTM zones.  The user has to be careful here
+            # because the latitudes/longitudes given may span across different UTM zones.
+            UTMzoneArray = np.empty(dims, dtype='S4')
+
+
+            # Iterate over the array in flattened form so that we don't need to deal with number of axes.
+            for i in range(len(latitude.flat)):
+                if UTMzone is None:
+                    UTMx.flat[i],UTMy.flat[i],UTMzoneArray.flat[i] = self.LatLonToUTM_elem(latitude.flat[i],longitude.flat[i])
+                else:
+                    if isinstance(UTMzone,np.ndarray):
+                        UTMzone_ = UTMzone.flat[i]
+                    else:
+                        UTMzone_ = UTMzone
+                    UTMx.flat[i],UTMy.flat[i],UTMzoneArray.flat[i] = self.LatLonToUTM_elem(latitude.flat[i],longitude.flat[i],UTMzone_)
                 
-            
-            for i in range(ni):
-                for j in range(nj):
-                    for k in range(nk):
-                        if UTMZone is None:
-                            [UTMx[i,j,k],UTMy[i,j,k],UTMzone[i,j,k]] = self.LatLonToUTM_elem(latitude[i,j,k],longitude[i,j,k])
-                        else:
-                            [UTMx[i,j,k],UTMy[i,j,k],UTMzone[i,j,k]] = self.LatLonToUTM_elem(latitude[i,j,k],longitude[i,j,k],UTMzone[i,j,k])
-         
+            # Now copy the UTM zone array into the UTMzone variable
+            if UTMzone is None:
+                UTMzone = np.copy(UTMzoneArray)
+                del UTMzoneArray
+
+        
+        # If giving a single value, no need to loop.
         else:
             if UTMzone is None:
-                [UTMx,UTMy,UTMzone] = self.LatLonToUTM_elem(latitude,longitude)
+                UTMx, UTMy, UTMzone = self.LatLonToUTM_elem(latitude,longitude)
             else:
-                [UTMx,UTMy,UTMzone] = self.LatLonToUTM_elem(latitude,longitude,UTMzone)
+                UTMx, UTMy, UTMzone = self.LatLonToUTM_elem(latitude,longitude,UTMzone)
                 
                 
+    
+        return UTMx, UTMy, UTMzone
                 
                 
-                
-            
+
+
+        
     # Convert from latitude-longitude to UTM coordinates.
     def LatLonToUTM_elem(self,latitude,longitude,UTMzone=None):
         
@@ -514,8 +531,7 @@ class inflowPrepMMC:
                 zStr = str(z)
             
             UTMzone = zStr + ' ' + l
-                        
-                        
+                                        
         # Compute the UTM coordinates given the zone.               
         sa = 6378137.0
         sb = 6356752.314245
@@ -550,7 +566,7 @@ class inflowPrepMMC:
         if (UTMy < 0.0):
             UTMy = UTMy + 9999999.0
 
-        return (UTMx,UTMy,UTMzone)
+        return UTMx,UTMy,UTMzone
     
     
     
@@ -559,7 +575,8 @@ class inflowPrepMMC:
     
     # Driver for conversion from UTM coordinates to latitude-longitude.
     def UTMtoLatLon(self,UTMx,UTMy,UTMzone):
-    
+
+        # If giving an array of UTM coordinates, loop over each value.
         if isinstance(UTMx,np.ndarray):
             
             # Get the dimensions of the coordinates passed into here.
@@ -572,20 +589,22 @@ class inflowPrepMMC:
                 nj = dims[1] 
             if (ndims > 2):
                 nk = dims[2]
-            
+
+            # Create empty latitude/longitude arrays.
             latitude = np.zeros(dims)
             longitude = np.zeros(dims)
-            
-            for i in range(ni):
-                for j in range(nj):
-                    for k in range(nk):
-                        [latitude[i,j,k],longitude[i,j,k]] = self.UTMtoLatLon_elem(self,UTMx[i,j,k],UTMy[i,j,k],UTMzone[i,j,k])
-                        
+
+            # Loop over the arrays in flattened form
+            for i in range(len(latitude.flat)):
+                latitude.flat[i],longitude.flat[i] = self.UTMtoLatLon_elem(self,UTMx.flat[i],UTMy.flat[i],UTMzone.flat[i])
+
+        
+        # If just a single UTM coordinate, no need to loop
         else:
             [latitude,longitude] = self.UTMtoLatLon_elem(UTMx,UTMy,UTMzone)
            
            
-        return (latitude,longitude)
+        return latitude,longitude
  
 
        
@@ -642,7 +661,7 @@ class inflowPrepMMC:
         longitude = (Delt *(180.0/np.pi)) + s
         latitude = (lat + (1.0 + e2sqr*(np.cos(lat)**2) - (3.0/2.0) * e2sqr * np.sin(lat) * np.cos(lat) * (TaO - lat)) * (TaO - lat)) * (180.0/np.pi)                    
         
-        return (latitude,longitude)
+        return latitude,longitude
         
         
         
