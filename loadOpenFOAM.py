@@ -9,7 +9,7 @@
 # I borrowed heavily from https://github.com/fluiddyn/fluidfoam/.
 # If you want more capability, consider that package.  The purpose
 # of this class is to be able to load basic OpenFOAM data so that
-# on can manipulate it in python. 
+# one can manipulate it in python. 
 
 
 import numpy as np
